@@ -21,11 +21,16 @@
  */
 package org.wildfly.extension.health;
 
+import static org.jboss.as.server.deployment.Phase.STRUCTURE;
+import static org.wildfly.extension.health.HealthExtension.SUBSYSTEM_NAME;
 import static org.wildfly.extension.health._private.HealthLogger.LOGGER;
 
 import org.jboss.as.controller.AbstractBoottimeAddStepHandler;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
+import org.jboss.as.server.AbstractDeploymentChainStep;
+import org.jboss.as.server.DeploymentProcessorTarget;
+import org.jboss.as.server.deployment.Phase;
 import org.jboss.dmr.ModelNode;
 
 /**
@@ -44,6 +49,13 @@ public class HealthSubsystemAdd extends AbstractBoottimeAddStepHandler {
         super.performBoottime(context, operation, model);
 
         final boolean securityEnabled = HealthSubsystemDefinition.SECURITY_ENABLED.resolveModelAttribute(context, model).asBoolean();
+
+        context.addStep(new AbstractDeploymentChainStep() {
+            @Override
+            protected void execute(DeploymentProcessorTarget deploymentProcessorTarget) {
+                deploymentProcessorTarget.addDeploymentProcessor(SUBSYSTEM_NAME, STRUCTURE, Phase.PARSE_AROUNDINVOKE_ANNOTATION, new HelperDeploymentDependencyProcessor());
+            }
+        }, OperationContext.Stage.RUNTIME);
 
         HealthContextService.install(context, securityEnabled);
         ServerProbesService.install(context);
